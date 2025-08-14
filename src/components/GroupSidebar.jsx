@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Tree-Sidebar mit Connector-Linien, nutzt bevorzugt permission.categoryPath (CSV-Spalten),
@@ -12,8 +13,9 @@ function partsFromPermission(p) {
 }
 
 function buildTree(permissions) {
-  const root = { name: "__root__", path: "", children: new Map(), hasItems: false };
+  const root = { name: "__root__", path: "", children: new Map(), hasItems: false, permissions: [] };
   const itemCountByPath = new Map();
+  const permissionsByPath = new Map();
 
   for (const p of permissions || []) {
     const parts = partsFromPermission(p);
@@ -23,17 +25,21 @@ function buildTree(permissions) {
       agg.push(part);
       const path = agg.join(" / ");
       if (!cur.children.has(part)) {
-        cur.children.set(part, { name: part, path, children: new Map(), hasItems: false });
+        cur.children.set(part, { name: part, path, children: new Map(), hasItems: false, permissions: [] });
       }
       cur = cur.children.get(part);
     }
     // Merk dir, dass der Knoten Items hat (damit Elternknoten auswählbar sind)
     itemCountByPath.set(cur.path, (itemCountByPath.get(cur.path) || 0) + 1);
+    // Speichere Berechtigungen für diese Gruppe
+    if (!permissionsByPath.has(cur.path)) permissionsByPath.set(cur.path, []);
+    permissionsByPath.get(cur.path).push(p);
   }
 
-  // Flag hasItems setzen
+  // Flag hasItems und permissions setzen
   const setFlags = (node) => {
     if (itemCountByPath.has(node.path)) node.hasItems = true;
+    if (permissionsByPath.has(node.path)) node.permissions = permissionsByPath.get(node.path);
     for (const child of node.children.values()) setFlags(child);
   };
   setFlags(root);
@@ -108,7 +114,49 @@ function Connectors({ depth, ancestorLast, isLast }) {
   );
 }
 
-function NodeRow({ node, depth, isOpen, isSelected, isLast, ancestorLast, toggle, select, hasChildren }) {
+function checkIfIncomplete(node, roles, assigned) {
+  // Rekursiv alle Berechtigungen in diesem Knoten und seinen Kindern sammeln
+  const collectAllPermissions = (n) => {
+    let perms = [...(n.permissions || [])];
+    for (const child of n.children.values()) {
+      perms = perms.concat(collectAllPermissions(child));
+    }
+    return perms;
+  };
+  
+  const allPermissions = collectAllPermissions(node);
+  
+  if (allPermissions.length === 0) return false;
+  if (!roles || roles.length === 0) return false;
+  
+  let hasAnyAssignment = false;
+  let hasUnassignedPermissions = false;
+  
+  // Prüfe jede Berechtigung in dieser Gruppe
+  allPermissions.forEach(perm => {
+    let permissionHasAssignment = false;
+    
+    // Prüfe ob diese Berechtigung mindestens einer Rolle zugewiesen ist
+    roles.forEach(role => {
+      if (assigned.has(`${role.id}:${perm.id}`)) {
+        hasAnyAssignment = true;
+        permissionHasAssignment = true;
+      }
+    });
+    
+    // Wenn diese Berechtigung keiner Rolle zugewiesen ist
+    if (!permissionHasAssignment) {
+      hasUnassignedPermissions = true;
+    }
+  });
+  
+  // Gruppe ist unvollständig wenn:
+  // - Mindestens eine Berechtigung wurde zugewiesen (Gruppe wurde begonnen)
+  // - Es gibt noch Berechtigungen, die keiner Rolle zugewiesen sind
+  return hasAnyAssignment && hasUnassignedPermissions;
+}
+
+function NodeRow({ node, depth, isOpen, isSelected, isLast, ancestorLast, toggle, select, hasChildren, isIncomplete, onContextMenu }) {
   return (
     <div
       role="treeitem"
@@ -121,6 +169,10 @@ function NodeRow({ node, depth, isOpen, isSelected, isLast, ancestorLast, toggle
       title={node.path}
       // NEU: Klick wählt IMMER den Knoten aus (zeigt ggf. Items der Parent-Gruppe)
       onClick={() => select(node.path)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu(e, node);
+      }}
     >
       <Connectors depth={depth} ancestorLast={ancestorLast} isLast={isLast} />
 
@@ -143,12 +195,23 @@ function NodeRow({ node, depth, isOpen, isSelected, isLast, ancestorLast, toggle
       <span className={`truncate text-sm ${isSelected ? "font-semibold" : "text-gray-700"}`} style={{ maxWidth: "calc(100% - 64px)" }}>
         {node.name}
       </span>
+      
+      {isIncomplete && (
+        <div 
+          className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500 text-white ml-auto mr-1" 
+          title="Unvollständig bearbeitet - es gibt noch nicht zugewiesene Berechtigungen in dieser Gruppe"
+        >
+          <span className="text-xs font-bold">!</span>
+        </div>
+      )}
     </div>
   );
 }
 
-export default function GroupSidebar({ permissions, selectedPath, onSelect }) {
+export default function GroupSidebar({ permissions, selectedPath, onSelect, roles = [], assigned = new Set(), onToggle, disabled = false }) {
   const root = useMemo(() => buildTree(permissions), [permissions]);
+  const [contextMenu, setContextMenu] = useState(null);
+  const contextMenuRef = useRef(null);
 
   // Top-Level geöffnet
   const [open, setOpen] = useState(() => {
@@ -170,6 +233,98 @@ export default function GroupSidebar({ permissions, selectedPath, onSelect }) {
   }, [selectedPath]);
 
   const visible = useMemo(() => buildVisible(root, open), [root, open]);
+
+  // Context Menu Handlers
+  useEffect(() => {
+    if (!contextMenu) return;
+    
+    const handleClickOutside = (e) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+        setContextMenu(null);
+      }
+    };
+    
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [contextMenu]);
+
+  const handleContextMenu = (e, node) => {
+    if (disabled || !onToggle) return;
+    
+    // Sammle alle Berechtigungen in dieser Gruppe
+    const collectAllPermissions = (n) => {
+      let perms = [...(n.permissions || [])];
+      for (const child of n.children.values()) {
+        perms = perms.concat(collectAllPermissions(child));
+      }
+      return perms;
+    };
+    
+    const groupPermissions = collectAllPermissions(node);
+    if (groupPermissions.length === 0) return;
+    
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node,
+      permissions: groupPermissions
+    });
+  };
+
+  const handleAllowAll = () => {
+    if (!contextMenu) return;
+    contextMenu.permissions.forEach(perm => {
+      roles.forEach(role => {
+        if (!assigned.has(`${role.id}:${perm.id}`)) {
+          onToggle(role.id, perm.id, true);
+        }
+      });
+    });
+    setContextMenu(null);
+  };
+
+  const handleDenyAll = () => {
+    if (!contextMenu) return;
+    contextMenu.permissions.forEach(perm => {
+      roles.forEach(role => {
+        if (assigned.has(`${role.id}:${perm.id}`)) {
+          onToggle(role.id, perm.id, false);
+        }
+      });
+    });
+    setContextMenu(null);
+  };
+
+  const handleAllowAllForRole = (roleId) => {
+    if (!contextMenu) return;
+    contextMenu.permissions.forEach(perm => {
+      if (!assigned.has(`${roleId}:${perm.id}`)) {
+        onToggle(roleId, perm.id, true);
+      }
+    });
+    setContextMenu(null);
+  };
+
+  const handleDenyAllForRole = (roleId) => {
+    if (!contextMenu) return;
+    contextMenu.permissions.forEach(perm => {
+      if (assigned.has(`${roleId}:${perm.id}`)) {
+        onToggle(roleId, perm.id, false);
+      }
+    });
+    setContextMenu(null);
+  };
 
   const toggle = (path) => {
     const parts = String(path).split("/").map(s=>s.trim()).filter(Boolean);
@@ -230,6 +385,7 @@ export default function GroupSidebar({ permissions, selectedPath, onSelect }) {
           {visible.map((v) => {
             const hasChildren = v.node.children.size > 0;
             const isSelected = v.node.path === selectedPath;
+            const isIncomplete = checkIfIncomplete(v.node, roles, assigned);
             return (
               <NodeRow
                 key={v.node.path}
@@ -242,11 +398,77 @@ export default function GroupSidebar({ permissions, selectedPath, onSelect }) {
                 toggle={toggle}
                 select={select}
                 hasChildren={hasChildren}
+                isIncomplete={isIncomplete}
+                onContextMenu={handleContextMenu}
               />
             );
           })}
         </div>
       </div>
+      
+      {/* Context Menu */}
+      {contextMenu && createPortal(
+        <>
+          <div 
+            className="fixed inset-0 z-[99]" 
+            onClick={() => setContextMenu(null)}
+            style={{ background: 'transparent' }}
+          />
+          <div
+            ref={contextMenuRef}
+            className="fixed z-[100] bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px]"
+            style={{ 
+              top: contextMenu.y, 
+              left: Math.min(contextMenu.x, window.innerWidth - 250)
+            }}
+          >
+            <div className="px-3 py-1 text-xs font-medium text-gray-500 border-b">
+              {contextMenu.node.name}
+            </div>
+            
+            {/* Allgemeine Aktionen */}
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+              onClick={handleAllowAll}
+            >
+              ✓ Allen Rollen erlauben
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+              onClick={handleDenyAll}
+            >
+              ✗ Allen Rollen verbieten
+            </button>
+            
+            {/* Rollenspezifische Aktionen */}
+            {roles.length > 0 && (
+              <>
+                <div className="border-t my-1" />
+                <div className="px-3 py-1 text-xs font-medium text-gray-500">
+                  Nach Rolle
+                </div>
+                {roles.map(role => (
+                  <div key={role.id}>
+                    <button
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-50"
+                      onClick={() => handleAllowAllForRole(role.id)}
+                    >
+                      ✓ {role.name}: erlauben
+                    </button>
+                    <button
+                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-50"
+                      onClick={() => handleDenyAllForRole(role.id)}
+                    >
+                      ✗ {role.name}: verbieten
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

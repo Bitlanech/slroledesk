@@ -278,7 +278,15 @@ export default function Assign() {
 
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12 md:col-span-3">
-          <GroupSidebar permissions={filteredPermissions} selectedPath={selectedPath} onSelect={setSelectedPath} />
+          <GroupSidebar 
+            permissions={filteredPermissions} 
+            selectedPath={selectedPath} 
+            onSelect={setSelectedPath} 
+            roles={roles} 
+            assigned={assigned}
+            onToggle={onToggle}
+            disabled={disabled}
+          />
         </div>
         <div className="col-span-12 md:col-span-9">
           <FunctionMatrix

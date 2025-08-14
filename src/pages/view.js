@@ -13,10 +13,7 @@ export default function ViewOnly() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-50 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Rollen & Berechtigungen (Ansicht)</h1>
-        <button onClick={async () => { await fetch("/api/logout"); location.href = "/"; }} className="border rounded-xl px-3 py-2">Logout</button>
-      </div>
+      <h1 className="text-xl font-semibold">Rollen & Berechtigungen (Ansicht)</h1>
       <LockBanner lockedAt={data.lockedAt} />
       <AssignTable roles={data.roles} permissions={data.permissions} assigned={new Set(data.assigned)} onToggle={() => {}} disabled />
     </div>

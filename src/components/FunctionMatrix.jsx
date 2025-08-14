@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { labelForPermission, titleFromPermission } from "@/lib/perm-label";
 
@@ -92,7 +92,9 @@ function findNodeByPath(root, path) {
 
 /* ---------- Popover Menüs ---------- */
 function RoleAddMenu({ anchorEl, roles, onSelect, onClose }) {
+  const menuRef = useRef(null);
   const [pos, setPos] = useState({ top:0, left:0, minWidth:160 });
+  
   useState(() => {
     const rect = anchorEl?.getBoundingClientRect?.();
     if (rect) {
@@ -101,15 +103,51 @@ function RoleAddMenu({ anchorEl, roles, onSelect, onClose }) {
       setPos({ top: rect.bottom + 6, left, minWidth: Math.max(160, rect.width) });
     }
   });
+  
+  // Click-Outside Handler
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target) && 
+          anchorEl && !anchorEl.contains(e.target)) {
+        onClose();
+      }
+    };
+    
+    // ESC-Key Handler
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [anchorEl, onClose]);
+  
   return createPortal(
-    <div style={{ position:"fixed", top:pos.top, left:pos.left, minWidth:pos.minWidth, zIndex:70 }}
-         className="bg-white border border-edge rounded-lg shadow-card max-h-[50vh] overflow-auto">
-      {roles.length ? roles.map(r => (
-        <button key={r.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-soft" onClick={() => onSelect(r)}>
-          {r.name}
-        </button>
-      )) : <div className="px-3 py-2 text-sm text-ink/50">Keine Rollen verfügbar</div>}
-    </div>,
+    <>
+      {/* Invisible backdrop for mobile/touch devices */}
+      <div 
+        className="fixed inset-0 z-[69]" 
+        onClick={onClose}
+        style={{ background: 'transparent' }}
+      />
+      <div 
+        ref={menuRef}
+        style={{ position:"fixed", top:pos.top, left:pos.left, minWidth:pos.minWidth, zIndex:70 }}
+        className="bg-white border border-edge rounded-lg shadow-card max-h-[50vh] overflow-auto">
+        {roles.length ? roles.map(r => (
+          <button key={r.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-soft" onClick={() => onSelect(r)}>
+            {r.name}
+          </button>
+        )) : <div className="px-3 py-2 text-sm text-ink/50">Keine Rollen verfügbar</div>}
+      </div>
+    </>,
     document.body
   );
 }
@@ -173,7 +211,7 @@ const HeadIcon = ({ title, path }) => (
   </div>
 );
 const ICONS = {
-  access: "M12 2a5 5 0 0 1 5 5v1h1a2 2 0 0 1 2 2v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v1h6V7a3 3 0 0 0-3-3Z", // Schloss
+  access: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", // Häkchen im Kreis
   read:   "M12 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm0-4c5.523 0 10 5.373 10 8s-4.477 8-10 8S2 12.627 2 10s4.477-8 10-8Zm0 14c3.866 0 7-3.134 7-6s-3.134-6-7-6-7 3.134-7 6 3.134 6 7 6Z",
   edit:   "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z",
   create: "M11 2a1 1 0 0 1 1 1v8h8a1 1 0 1 1 0 2h-8v8a1 1 0 1 1-2 0v-8H2a1 1 0 1 1 0-2h8V3a1 1 0 0 1 1-1Z",
@@ -200,7 +238,34 @@ function HeaderIcons({ columns }) {
 /* ---------- Zeilen ---------- */
 function FunctionRow({ funcGroup, roles, assignedSet, onToggleUpstream, disabled, columns }) {
   const kebabRef = useRef(null);
+  const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
+  
+  // Click-Outside und ESC Handler für Kebab-Menu
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target) && 
+          kebabRef.current && !kebabRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
 
   const actionToPerm = {
     access: funcGroup.actions["access"],
@@ -234,7 +299,23 @@ function FunctionRow({ funcGroup, roles, assignedSet, onToggleUpstream, disabled
     ...extras.map(e=>e.permission)
   ].filter(Boolean);
 
-  const kebabItems = [
+  // Prüfe ob es nur "access" gibt (keine anderen Standard-Aktionen und keine Extras)
+  const hasOnlyAccess = allPerms.length === 1 && actionToPerm["access"] && !actionToPerm["read"] && !actionToPerm["edit"] && 
+                        !actionToPerm["create"] && !actionToPerm["copy"] && !actionToPerm["delete"] && !actionToPerm["print"] && 
+                        extras.length === 0;
+
+  const kebabItems = hasOnlyAccess ? [
+    // Für "nur Access": Allen Rollen erlauben/verbieten
+    { label: "Allen Rollen erlauben", onClick: () => { 
+      const p = actionToPerm["access"];
+      if (p) for (const r of roles.list) onToggleUpstream(r.id, p.id, true);
+    }},
+    { label: "Allen Rollen verbieten", onClick: () => { 
+      const p = actionToPerm["access"];
+      if (p) for (const r of roles.list) onToggleUpstream(r.id, p.id, false);
+    }}
+  ] : [
+    // Für normale Funktionen: Alle Aktionen für alle Rollen
     { label: "Allen Rollen: alle Aktionen an", onClick: () => { for (const p of allPerms) for (const r of roles.list) onToggleUpstream(r.id, p.id, true); } },
     { label: "Allen Rollen: alle Aktionen aus", onClick: () => { for (const p of allPerms) for (const r of roles.list) onToggleUpstream(r.id, p.id, false); } },
     ...roles.list.map(r => {
@@ -280,14 +361,24 @@ function FunctionRow({ funcGroup, roles, assignedSet, onToggleUpstream, disabled
             ⋯
           </button>
           {open && createPortal(
-            <div style={{ position:"fixed", zIndex:70, ...(() => { const r = kebabRef.current.getBoundingClientRect(); return { top:r.bottom+6, left:r.right-180, minWidth:180 }; })() }}
-                 className="bg-white border border-edge rounded-lg shadow-card overflow-hidden">
-              {kebabItems.map((it, i) => (
-                <button key={i} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-soft" onClick={() => { it.onClick(); setOpen(false); }}>
-                  {it.label}
-                </button>
-              ))}
-            </div>,
+            <>
+              {/* Invisible backdrop */}
+              <div 
+                className="fixed inset-0 z-[69]" 
+                onClick={() => setOpen(false)}
+                style={{ background: 'transparent' }}
+              />
+              <div 
+                ref={menuRef}
+                style={{ position:"fixed", zIndex:70, ...(() => { const r = kebabRef.current.getBoundingClientRect(); return { top:r.bottom+6, left:r.right-180, minWidth:180 }; })() }}
+                className="bg-white border border-edge rounded-lg shadow-card overflow-hidden">
+                {kebabItems.map((it, i) => (
+                  <button key={i} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-soft" onClick={() => { it.onClick(); setOpen(false); }}>
+                    {it.label}
+                  </button>
+                ))}
+              </div>
+            </>,
             document.body
           )}
         </td>

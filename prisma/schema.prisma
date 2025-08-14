@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id           String    @id @default(cuid())
+  name         String
+  code         String    @unique
+  company      String?
+  contactName  String?
+  email        String?
+  phone        String?
+  street       String?
+  zip          String?
+  city         String?
+  country      String?
+  createdAt    DateTime  @default(now())
+  lockedAt     DateTime?
+  draftSavedAt DateTime?
+  assignVersion Int      @default(0)   // <-- NEU: Version für Optimistic Concurrency
+
+  accessCodes      AccessCode[]
+  roles            Role[]
+  rolePermissions  RolePermission[]
+}
+
+model Role {
+  id         String   @id @default(cuid())
+  name       String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+
+  rolePermissions RolePermission[]
+  @@unique([customerId, name])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  category    String
+  description String?
+  // NEU:
+  categoryPath Json?   // z. B. ["Anwendungen / Module"] oder ["Daten","Anlagen"]
+
+  roleEntries RolePermission[]
+}
+model RolePermission {
+  id           String     @id @default(cuid())
+  customer     Customer   @relation(fields: [customerId], references: [id])
+  customerId   String
+  role         Role       @relation(fields: [roleId], references: [id])
+  roleId       String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  permissionId String
+
+  @@unique([customerId, roleId, permissionId])
+}
+
+model AccessCode {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  active     Boolean  @default(true)
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { withSsrSession } from "@/lib/auth";
+import Link from "next/link";
 
 export const getServerSideProps = withSsrSession(async ({ req }) => {
   if (!req.session?.admin) return { redirect: { destination: "/admin/login", permanent: false } };
@@ -90,7 +91,7 @@ export default function AdminHome() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Admin – Kundenverwaltung</h1>
           <div className="flex gap-2">
-            <a href="/admin/import" className="btn">CSV-Import</a>
+            <Link href="/admin/import" className="btn">CSV-Import</Link>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2">

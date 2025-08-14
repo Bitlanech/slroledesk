@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Forbidden() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
@@ -11,9 +13,9 @@ export default function Forbidden() {
         <p className="mt-2 text-gray-600">
           Du hast keine Berechtigung, diese Seite aufzurufen.
         </p>
-        <a href="/" className="mt-6 inline-block rounded-lg border px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+        <Link href="/" className="mt-6 inline-block rounded-lg border px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
           Zur Startseite
-        </a>
+        </Link>
       </div>
     </main>
   );

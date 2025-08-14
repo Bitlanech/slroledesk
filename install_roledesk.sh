@@ -58,11 +58,13 @@ install_postgres() {
 create_db() {
   echo "🛠 DB & User anlegen…"
   # DB_PASS hier generieren, wir brauchen ihn gleich in psql & .env
-  DB_PASS="$(generate_random_string 32)"
+DB_PASS_RAW="$(openssl rand -base64 32)"
+DB_PASS_URLENC="$(node -e 'console.log(encodeURIComponent(process.argv[1]))' "${DB_PASS_RAW}")"
+
 
   # User anlegen (falls nicht vorhanden)
   sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';"
+   sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS_RAW}';"
 
   # DB anlegen (falls nicht vorhanden)
   sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1 || \
@@ -87,7 +89,7 @@ create_env() {
     SESSION_SECRET="$(openssl rand -hex 32)"
     cat > "${ENV_FILE}" <<EOF
 # SL-RoleDesk
-DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
+DATABASE_URL=\"postgresql://${DB_USER}:${DB_PASS_URLENC}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public\"
 SESSION_PASSWORD="${SESSION_PASSWORD}"
 ADMIN_TOKEN="${ADMIN_TOKEN}"
 NEXT_PUBLIC_APP_NAME="SL-RoleDesk"

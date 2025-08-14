@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import RoleManager from "@/components/RoleManager";
 import { withSsrSession } from "@/lib/auth";
+import Link from "next/link";
 
 export const getServerSideProps = withSsrSession(async ({ req }) => {
   if (!req.session?.customerId) return { redirect: { destination: "/", permanent: false } };
@@ -24,7 +25,7 @@ export default function RolesPage() {
       <div className="card p-3">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold">Rollen verwalten</h1>
-          <a href="/assign" className="btn">← Zurück zu Zuweisungen</a>
+          <Link href="/assign" className="btn">← Zurück zu Zuweisungen</Link>
         </div>
       </div>
       <RoleManager roles={roles} onChanged={load} disabled={!!lockedAt} />

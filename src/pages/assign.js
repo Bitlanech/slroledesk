@@ -5,7 +5,7 @@ import GroupSidebar from "@/components/GroupSidebar";
 import FunctionMatrix from "@/components/FunctionMatrix";
 import RoleManager from "@/components/RoleManager";
 import ExportPdfButtons from "@/components/ExportPdfButtons";
-
+import Link from "next/link";
 
 export default function Assign() {
   const [loading, setLoading] = useState(true);
@@ -257,7 +257,7 @@ export default function Assign() {
           <div className="flex items-center gap-2">
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Funktion, Kategorie, Beschreibung) …" className="input w-72" />
             <button onClick={() => setQ("")} className="btn">Zurücksetzen</button>
-            <a href="/roles" className="btn">Rollen verwalten</a>
+            <Link href="/roles" className="btn">Rollen verwalten</Link>
             <button onClick={onUndo} disabled={disabled || !undoStack.length} className={`btn ${disabled || !undoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}>Rückgängig</button>
             <button onClick={onRedo} disabled={disabled || !redoStack.length} className={`btn ${disabled || !redoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}>Wiederholen</button>
             <button onClick={() => onSaveDraft(false)} disabled={disabled || !hasPending || isSaving} className={`btn ${disabled || !hasPending || isSaving ? "opacity-50 cursor-not-allowed" : ""}`} title="Zwischenspeichern ohne Sperren">

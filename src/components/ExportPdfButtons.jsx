@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
  *   - className?: string    (zusätzliche Styles)
  *   - label?: string        (angezeigter Text)
  */
-export default function ExportPdfButtons({ mode = "customer", customerId, className = "", label = "Als PDF exportieren" }) {
+export default function ExportPdfButtons({ mode = "customer", customerId, className = "", label = "Als PDF exportieren", compact = false }) {
   const [who, setWho] = useState({ isAdmin: false, isCustomer: false });
 
   useEffect(() => {
@@ -39,7 +39,17 @@ export default function ExportPdfButtons({ mode = "customer", customerId, classN
       ? `/api/export/pdf?type=admin&customerId=${encodeURIComponent(customerId || "")}`
       : `/api/export/pdf?type=customer`;
 
-  return (
+  return compact ? (
+    <a
+      href={href}
+      className={`btn p-2 ${className}`}
+      title="PDF-Export herunterladen"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+        <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v2H8v-2Zm0 4h8v2H8v-2Z"/>
+      </svg>
+    </a>
+  ) : (
     <a
       href={href}
       className={`inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 ${className}`}

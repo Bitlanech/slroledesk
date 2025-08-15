@@ -23,17 +23,17 @@
 /* App-Grundlayout + Hilfsklassen (nur Utility-Kombi, keine neuen Klassennamen nötig) */
 html, body { @apply bg-soft text-ink; }
 .container-app { @apply min-h-screen flex; }
-.sidebar { @apply hidden md:flex w-64 bg-white border-r border-edge flex-col; }
+.sidebar { @apply hidden md:flex fixed h-screen w-64 bg-white border-r border-edge flex-col; }
+.main { @apply flex-1 md:ml-64; }
 .sidebar .brand { @apply px-5 py-4 text-base font-semibold text-brand; }
-.sidebar nav a { @apply block px-5 py-2.5 text-sm text-ink/80 hover:text-ink hover:bg-soft rounded-md mx-2; }
+.sidebar nav a { @apply block px-5 py-2.5 text-sm text-left text-ink/80 hover:text-ink hover:bg-soft rounded-md mx-2; }
 
 .topbar { @apply sticky top-0 z-30 bg-white border-b border-edge; }
 .topbar-inner { @apply h-14 flex items-center justify-between px-4; }
-.main { @apply flex-1; }
 
 .card { @apply bg-white border border-edge rounded-xl shadow-card; }
 .btn { @apply inline-flex items-center justify-center rounded-lg border border-edge px-3 py-2 text-sm hover:bg-soft; }
-.btn-primary { @apply bg-brand text-white border-transparent hover:opacity-95; }
+.btn-primary { @apply bg-brand text-white border-transparent hover:bg-brand hover:opacity-90; }
 .input, .select { @apply border border-edge rounded-lg px-3 py-2 text-sm bg-white; }
 
 .table { @apply min-w-full text-sm; }

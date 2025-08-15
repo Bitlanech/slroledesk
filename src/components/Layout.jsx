@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 /**
@@ -33,17 +34,29 @@ export default function Layout({ children }) {
   return (
     <div className="container-app">
       <aside className="sidebar">
-        <div className="brand">BitLane · SL-RoleDesk</div>
+        <div className="p-4 border-b border-edge/10 flex justify-center">
+          <Image 
+            src="/Logo_final.svg" 
+            alt="SL-RoleDesk Logo" 
+            width={180} 
+            height={60}
+            className="w-1/2 h-auto"
+            priority
+          />
+        </div>
 
-        <nav className="mt-2 space-y-1">
-          <Link href="/assign">Rollen & Rechte</Link>
-          <Link href="/view">Ansicht</Link>
+        <nav className="mt-4 px-4 space-y-1">
+          <div className="text-xs font-semibold text-ink/50 uppercase tracking-wider px-2 mt-2 mb-2">Verwaltung</div>
+          <Link href="/assign">Berechtigungen zuweisen</Link>
+          <Link href="/roles">Rollen verwalten</Link>
+          <Link href="/view">Nur Ansicht</Link>
 
           {/* Admin-Links nur für Admins anzeigen */}
           {isAdmin && (
             <>
-              <Link href="/admin">Admin</Link>
-              <Link href="/admin/import">Import</Link>
+              <div className="text-xs font-semibold text-ink/50 uppercase tracking-wider px-2 mt-4 mb-2">Administration</div>
+              <Link href="/admin">Kunden verwalten</Link>
+              <Link href="/admin/import">Berechtigungen importieren</Link>
             </>
           )}
         </nav>

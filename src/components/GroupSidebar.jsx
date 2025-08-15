@@ -198,7 +198,7 @@ function NodeRow({ node, depth, isOpen, isSelected, isLast, ancestorLast, toggle
       
       {isIncomplete && (
         <div 
-          className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500 text-white ml-auto mr-1" 
+          className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-red-500 text-red-500 ml-auto mr-1" 
           title="Unvollständig bearbeitet - es gibt noch nicht zugewiesene Berechtigungen in dieser Gruppe"
         >
           <span className="text-xs font-bold">!</span>

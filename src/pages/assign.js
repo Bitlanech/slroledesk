@@ -16,6 +16,7 @@ export default function Assign() {
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [assignVersion, setAssignVersion] = useState(0); // <-- Versionsstand vom Server
   const [customer, setCustomer] = useState(null);
+  const [isCompact, setIsCompact] = useState(false);
 
   const [q, setQ] = useState("");
   const [selectedPath, setSelectedPath] = useState("");
@@ -72,6 +73,16 @@ export default function Assign() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [pendingChanges.length, disabled]);
+
+  // Scroll detection for compact mode
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 100;
+      setIsCompact(scrolled);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Toggle aus Matrix
   const onToggle = (roleId, permissionId, allow) => {
@@ -168,6 +179,18 @@ export default function Assign() {
 
   // Final Submit (mit Versionsprüfung)
   const onSubmit = async () => {
+    // Bestätigungsdialog anzeigen
+    const confirmed = window.confirm(
+      "⚠️ ACHTUNG: Diese Aktion ist nicht umkehrbar!\n\n" +
+      "Durch das Einreichen & Sperren werden alle Änderungen final gespeichert und die Daten werden gesperrt.\n" +
+      "Sie können danach keine weiteren Änderungen mehr vornehmen.\n\n" +
+      "Möchten Sie wirklich fortfahren?"
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+
     setInfo(""); setError("");
     // offene Deltas mitschicken
     if (pendingChanges.length) {
@@ -245,29 +268,161 @@ export default function Assign() {
       <CustomerCard customer={{ ...customer, lockedAt }} />
       <LockBanner lockedAt={lockedAt} />
 
-      <div className="card p-3">
-        <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold">Rollen & Berechtigungen</h1>
-            <ExportPdfButtons mode="customer" />
-            <span className="text-xs text-ink/60">Zuletzt zwischengespeichert: {draftLabel}</span>
-            <span className="text-xs text-ink/60">Version: {assignVersion}</span>
-            {isSaving && <span className="text-xs text-ink/60">(speichere…)</span>}
+      <div className={`card sticky top-14 z-20 bg-white transition-all duration-300 ${isCompact ? 'p-3 shadow-lg' : 'p-6'}`}>
+        {isCompact ? (
+          // Compact Mode
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <h1 className="text-lg font-semibold whitespace-nowrap">Rollen & Berechtigungen</h1>
+              <input 
+                value={q} 
+                onChange={(e) => setQ(e.target.value)} 
+                placeholder="Suchen..." 
+                className="input flex-1 max-w-sm h-8 text-sm" 
+              />
+              <div className="flex items-center gap-2 text-xs text-ink/50">
+                <span>v{assignVersion}</span>
+                {isSaving && <span className="text-blue-600">Speichere...</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setQ("")} 
+                className="btn p-2" 
+                title="Suche zurücksetzen"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <Link href="/roles" className="btn p-2" title="Rollen verwalten">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </Link>
+              <div className="w-px h-6 bg-edge/30" />
+              <button 
+                onClick={onUndo} 
+                disabled={disabled || !undoStack.length} 
+                className={`btn p-2 ${disabled || !undoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}
+                title="Rückgängig"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+              </button>
+              <button 
+                onClick={onRedo} 
+                disabled={disabled || !redoStack.length} 
+                className={`btn p-2 ${disabled || !redoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}
+                title="Wiederholen"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                </svg>
+              </button>
+              <div className="w-px h-6 bg-edge/30" />
+              <button 
+                onClick={() => onSaveDraft(false)} 
+                disabled={disabled || !hasPending || isSaving} 
+                className={`btn p-2 ${disabled || !hasPending || isSaving ? "opacity-50 cursor-not-allowed" : ""} ${hasPending ? 'bg-yellow-50 border-yellow-400' : ''}`} 
+                title={hasPending ? `Zwischenspeichern (${pendingChanges.length} Änderungen)` : "Zwischenspeichern"}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2" />
+                </svg>
+                {hasPending && <span className="ml-1 text-xs font-bold">{pendingChanges.length}</span>}
+              </button>
+              <button 
+                disabled={disabled} 
+                onClick={onSubmit} 
+                className={`btn btn-primary p-2 ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                title="Einreichen & Sperren"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </button>
+              <ExportPdfButtons mode="customer" compact={true} />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Funktion, Kategorie, Beschreibung) …" className="input w-72" />
-            <button onClick={() => setQ("")} className="btn">Zurücksetzen</button>
-            <Link href="/roles" className="btn">Rollen verwalten</Link>
-            <button onClick={onUndo} disabled={disabled || !undoStack.length} className={`btn ${disabled || !undoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}>Rückgängig</button>
-            <button onClick={onRedo} disabled={disabled || !redoStack.length} className={`btn ${disabled || !redoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}>Wiederholen</button>
-            <button onClick={() => onSaveDraft(false)} disabled={disabled || !hasPending || isSaving} className={`btn ${disabled || !hasPending || isSaving ? "opacity-50 cursor-not-allowed" : ""}`} title="Zwischenspeichern ohne Sperren">
-              {hasPending ? `Zwischenspeichern (${pendingChanges.length})` : "Zwischenspeichern"}
-            </button>
-            <button disabled={disabled} onClick={onSubmit} className={`btn btn-primary ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
-              Einreichen & Sperren
-            </button>
+        ) : (
+          // Normal Mode
+          <div className="space-y-4">
+            {/* Header Section */}
+            <div className="flex items-center justify-between border-b border-edge/20 pb-4">
+              <div className="space-y-1">
+                <h1 className="text-xl font-semibold">Rollen & Berechtigungen</h1>
+                <div className="flex items-center gap-4 text-sm text-ink/60">
+                  <span>Zuletzt zwischengespeichert: {draftLabel}</span>
+                  <span>•</span>
+                  <span>Version: {assignVersion}</span>
+                  {isSaving && (
+                    <>
+                      <span>•</span>
+                      <span className="text-blue-600">Speichere...</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <ExportPdfButtons mode="customer" />
+            </div>
+
+            {/* Search and Actions Section */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1">
+                <input 
+                  value={q} 
+                  onChange={(e) => setQ(e.target.value)} 
+                  placeholder="Suchen (Funktion, Kategorie, Beschreibung) …" 
+                  className="input w-full max-w-md" 
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => setQ("")} className="btn">
+                  <span className="mr-1">⟲</span> Zurücksetzen
+                </button>
+                <div className="w-px h-6 bg-edge/30" />
+                <Link href="/roles" className="btn">
+                  <span className="mr-1">⚙</span> Rollen verwalten
+                </Link>
+                <div className="w-px h-6 bg-edge/30" />
+                <button 
+                  onClick={onUndo} 
+                  disabled={disabled || !undoStack.length} 
+                  className={`btn ${disabled || !undoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <span className="mr-1">↶</span> Rückgängig
+                </button>
+                <button 
+                  onClick={onRedo} 
+                  disabled={disabled || !redoStack.length} 
+                  className={`btn ${disabled || !redoStack.length ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <span className="mr-1">↷</span> Wiederholen
+                </button>
+                <div className="w-px h-6 bg-edge/30" />
+                <button 
+                  onClick={() => onSaveDraft(false)} 
+                  disabled={disabled || !hasPending || isSaving} 
+                  className={`btn ${disabled || !hasPending || isSaving ? "opacity-50 cursor-not-allowed" : ""}`} 
+                  title="Zwischenspeichern ohne Sperren"
+                >
+                  <span className="mr-1">💾</span>
+                  {hasPending ? `Zwischenspeichern (${pendingChanges.length})` : "Zwischenspeichern"}
+                </button>
+                <button 
+                  disabled={disabled} 
+                  onClick={onSubmit} 
+                  className={`btn btn-primary ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <span className="mr-1">🔒</span> Einreichen & Sperren
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
         {(info || error) && (
           <div className="mt-2 text-sm">
             {info && <span className="text-green-700">{info}</span>}
@@ -276,17 +431,19 @@ export default function Assign() {
         )}
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-4 mt-4">
         <div className="col-span-12 md:col-span-3">
-          <GroupSidebar 
-            permissions={filteredPermissions} 
-            selectedPath={selectedPath} 
-            onSelect={setSelectedPath} 
-            roles={roles} 
-            assigned={assigned}
-            onToggle={onToggle}
-            disabled={disabled}
-          />
+          <div className={`sticky ${isCompact ? 'top-32' : 'top-80'} transition-all duration-300`}>
+            <GroupSidebar 
+              permissions={filteredPermissions} 
+              selectedPath={selectedPath} 
+              onSelect={setSelectedPath} 
+              roles={roles} 
+              assigned={assigned}
+              onToggle={onToggle}
+              disabled={disabled}
+            />
+          </div>
         </div>
         <div className="col-span-12 md:col-span-9">
           <FunctionMatrix

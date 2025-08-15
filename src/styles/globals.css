@@ -26,7 +26,7 @@ html, body { @apply bg-soft text-ink; }
 .sidebar { @apply hidden md:flex fixed h-screen w-64 bg-white border-r border-edge flex-col; }
 .main { @apply flex-1 md:ml-64; }
 .sidebar .brand { @apply px-5 py-4 text-base font-semibold text-brand; }
-.sidebar nav a { @apply block px-5 py-2.5 text-sm text-left text-ink/80 hover:text-ink hover:bg-soft rounded-md mx-2; }
+.sidebar nav a { @apply flex items-center gap-3 px-5 py-2.5 text-sm text-left text-ink/80 hover:text-ink hover:bg-soft rounded-md mx-2; }
 
 .topbar { @apply sticky top-0 z-30 bg-white border-b border-edge; }
 .topbar-inner { @apply h-14 flex items-center justify-between px-4; }

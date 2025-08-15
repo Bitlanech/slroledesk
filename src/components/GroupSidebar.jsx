@@ -447,22 +447,29 @@ export default function GroupSidebar({ permissions, selectedPath, onSelect, role
                 <div className="px-3 py-1 text-xs font-medium text-gray-500">
                   Nach Rolle
                 </div>
-                {roles.map(role => (
-                  <div key={role.id}>
-                    <button
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-50"
-                      onClick={() => handleAllowAllForRole(role.id)}
-                    >
-                      ✓ {role.name}: erlauben
-                    </button>
-                    <button
-                      className="w-full text-left px-3 py-1 text-sm hover:bg-gray-50"
-                      onClick={() => handleDenyAllForRole(role.id)}
-                    >
-                      ✗ {role.name}: verbieten
-                    </button>
-                  </div>
-                ))}
+                <div className="max-h-64 overflow-y-auto">
+                  {roles.map(role => (
+                    <div key={role.id} className="flex items-center justify-between px-3 py-1 hover:bg-gray-50">
+                      <span className="text-sm text-gray-700 truncate flex-1 mr-2">{role.name}</span>
+                      <div className="flex gap-1">
+                        <button
+                          className="px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100"
+                          onClick={() => handleAllowAllForRole(role.id)}
+                          title={`${role.name}: Alle erlauben`}
+                        >
+                          ✓ Erlauben
+                        </button>
+                        <button
+                          className="px-2 py-1 text-xs bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100"
+                          onClick={() => handleDenyAllForRole(role.id)}
+                          title={`${role.name}: Alle verbieten`}
+                        >
+                          ✗ Verbieten
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
           </div>

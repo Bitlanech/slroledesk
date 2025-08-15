@@ -74,13 +74,26 @@ export default function Assign() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [pendingChanges.length, disabled]);
 
-  // Scroll detection for compact mode
+  // Scroll detection for compact mode with debouncing
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      const scrolled = window.scrollY > 100;
-      setIsCompact(scrolled);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrolled = window.scrollY > 200;
+          setIsCompact((prev) => {
+            // Only update if the state actually changes
+            if (prev !== scrolled) {
+              return scrolled;
+            }
+            return prev;
+          });
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

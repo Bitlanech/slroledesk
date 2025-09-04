@@ -124,16 +124,44 @@ function GroupRow({ group, roles, assigned, onToggle, disabled }) {
               <thead>
                 <tr>
                   <th>Aktion</th>
-                  {roles.map(r => <th key={r.id} className="text-center">{r.name}</th>)}
+                  {roles.map((r, roleIdx) => {
+                    const colors = [
+                      'text-blue-700 bg-blue-50',
+                      'text-green-700 bg-green-50',
+                      'text-purple-700 bg-purple-50',
+                      'text-amber-700 bg-amber-50',
+                      'text-rose-700 bg-rose-50',
+                      'text-cyan-700 bg-cyan-50',
+                      'text-indigo-700 bg-indigo-50',
+                      'text-teal-700 bg-teal-50',
+                    ];
+                    const headerColor = colors[roleIdx % colors.length];
+                    return (
+                      <th key={r.id} className={`text-center px-2 py-1 ${headerColor}`}>
+                        {r.name}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {group.items.map((p, idx) => (
                   <tr key={p.id} className={idx % 2 ? "bg-soft/40" : ""}>
                     <td className="py-2">{p.description || p.key}</td>
-                    {roles.map(r => {
+                    {roles.map((r, roleIdx) => {
                       const k = `${r.id}:${p.id}`;
                       const checked = assigned.has(k);
+                      const colors = [
+                        'accent-blue-600',
+                        'accent-green-600',
+                        'accent-purple-600',
+                        'accent-amber-600',
+                        'accent-rose-600',
+                        'accent-cyan-600',
+                        'accent-indigo-600',
+                        'accent-teal-600',
+                      ];
+                      const accentColor = colors[roleIdx % colors.length];
                       return (
                         <td key={r.id} className="text-center">
                           <input
@@ -141,6 +169,7 @@ function GroupRow({ group, roles, assigned, onToggle, disabled }) {
                             checked={checked}
                             disabled={disabled}
                             onChange={(e) => onToggle(r.id, p.id, e.target.checked)}
+                            className={accentColor}
                           />
                         </td>
                       );

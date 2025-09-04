@@ -152,6 +152,22 @@ function RoleAddMenu({ anchorEl, roles, onSelect, onClose }) {
   );
 }
 
+// Helper function to generate consistent colors for roles
+function getRoleColor(roleName, roleIndex) {
+  const colors = [
+    { bg: 'bg-blue-100', border: 'border-blue-400', text: 'text-blue-800' },
+    { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-800' },
+    { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-800' },
+    { bg: 'bg-amber-100', border: 'border-amber-400', text: 'text-amber-800' },
+    { bg: 'bg-rose-100', border: 'border-rose-400', text: 'text-rose-800' },
+    { bg: 'bg-cyan-100', border: 'border-cyan-400', text: 'text-cyan-800' },
+    { bg: 'bg-indigo-100', border: 'border-indigo-400', text: 'text-indigo-800' },
+    { bg: 'bg-teal-100', border: 'border-teal-400', text: 'text-teal-800' },
+  ];
+  
+  return colors[roleIndex % colors.length];
+}
+
 function RoleChips({ permission, roles, onToggle, disabled }) {
   const btnRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -163,20 +179,23 @@ function RoleChips({ permission, roles, onToggle, disabled }) {
 
   return (
     <div className="relative flex items-center gap-1 flex-wrap min-h-6">
-      {chosen.map(r => (
-        <span key={r.id} className="inline-flex items-center gap-1 h-6 px-2 rounded-full border border-brand/40 bg-brand/10 text-xs">
-          {r.name}
-          <button
-            type="button"
-            className={`-mr-1 rounded-full px-1 ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white"}`}
-            onClick={() => !disabled && onToggle(r.id, false)}
-            aria-label="Rolle entfernen"
-            title="Rolle entfernen"
-          >
-            ×
-          </button>
-        </span>
-      ))}
+      {chosen.map((r, index) => {
+        const color = getRoleColor(r.name, roles.list.indexOf(r));
+        return (
+          <span key={r.id} className={`inline-flex items-center gap-1 h-6 px-2 rounded-full border ${color.border} ${color.bg} text-xs ${color.text}`}>
+            {r.name}
+            <button
+              type="button"
+              className={`-mr-1 rounded-full px-1 ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white"}`}
+              onClick={() => !disabled && onToggle(r.id, false)}
+              aria-label="Rolle entfernen"
+              title="Rolle entfernen"
+            >
+              ×
+            </button>
+          </span>
+        );
+      })}
 
       <button
         ref={btnRef}
